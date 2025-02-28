@@ -29,12 +29,14 @@ LPCWSTR ReplaceTimeStamp(LPCWSTR lpOriginalTS) {
     LPWSTR buf = new WCHAR[65];
     memset(buf, 0, sizeof(WCHAR) * 65);
     if (!_wcsicmp(lpOriginalTS, L"{CustomTimestampMarker-SHA1}")) {
-        wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA1/");
+        //wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA1/");
+        wcscat(buf, L"http://localhost:1003/SHA1/");
         wcscat(buf, lpTimestamp);
         return buf;
     }
     else if (!_wcsicmp(lpOriginalTS, L"{CustomTimestampMarker-SHA256}")) {
-        wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA256/");
+        //wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA256/");
+        wcscat(buf, L"http://localhost:1003/SHA256/");
         wcscat(buf, lpTimestamp);
         return buf;
     }
