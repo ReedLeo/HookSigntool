@@ -22,6 +22,7 @@ fntGetLocalTime* pOldGetLocalTime = NULL;
 
 int year = -1, month = -1, day = -1, hour = -1, minute = -1, second = -1;
 WCHAR lpTimestamp[20];
+wchar_t swzServerUrl[260];
 
 LPCWSTR ReplaceTimeStamp(LPCWSTR lpOriginalTS) {
     if (!lpOriginalTS)
@@ -30,13 +31,13 @@ LPCWSTR ReplaceTimeStamp(LPCWSTR lpOriginalTS) {
     memset(buf, 0, sizeof(WCHAR) * 65);
     if (!_wcsicmp(lpOriginalTS, L"{CustomTimestampMarker-SHA1}")) {
         //wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA1/");
-        wcscat(buf, L"http://localhost:1003/SHA1/");
+        wcscat(buf, swzServerUrl);
         wcscat(buf, lpTimestamp);
         return buf;
     }
     else if (!_wcsicmp(lpOriginalTS, L"{CustomTimestampMarker-SHA256}")) {
         //wcscat(buf, L"http://timestamp.pki.jemmylovejenny.tk/SHA256/");
-        wcscat(buf, L"http://localhost:1003/SHA256/");
+        wcscat(buf,swzServerUrl);
         wcscat(buf, lpTimestamp);
         return buf;
     }
@@ -147,40 +148,101 @@ bool HookFunctions()
 
     return true;
 }
-bool ParseConfig(LPWSTR lpCommandLineConfig, LPWSTR lpCommandLineTimestamp)
-{
-    LPWSTR buf = new WCHAR[260];
-    memset(buf, 0, sizeof(WCHAR) * 260);
+//bool ParseConfig(LPWSTR lpCommandLineConfig, LPWSTR lpCommandLineTimestamp)
+//{
+//    LPWSTR buf = new WCHAR[260];
+//    memset(buf, 0, sizeof(WCHAR) * 260);
+//
+//    if (_wgetcwd(buf, 260) == NULL)
+//        return false;
+//    wcscat(buf, L"\\");
+//
+//    if (lpCommandLineConfig) {
+//        if ((wcschr(lpCommandLineConfig, L':') - lpCommandLineConfig) == 1) {
+//            memset(buf, 0, sizeof(WCHAR) * 260);
+//            wsprintfW(buf, lpCommandLineConfig);
+//        }
+//        else {
+//            wcscat(buf, lpCommandLineConfig);
+//        }
+//    }
+//    else {
+//        wcscat(buf, L"hook.ini");
+//    }
+//
+//    year = GetPrivateProfileIntW(L"Time", L"Year", -1, buf);
+//    month = GetPrivateProfileIntW(L"Time", L"Month", -1, buf);
+//    day = GetPrivateProfileIntW(L"Time", L"Day", -1, buf);
+//    hour = GetPrivateProfileIntW(L"Time", L"Hour", -1, buf);
+//    minute = GetPrivateProfileIntW(L"Time", L"Minute", -1, buf);
+//    second = GetPrivateProfileIntW(L"Time", L"Second", -1, buf);
+//
+//    if (lpCommandLineTimestamp)
+//        wsprintfW(lpTimestamp, lpCommandLineTimestamp);
+//    else
+//        GetPrivateProfileStringW(L"Timestamp", L"Timestamp", NULL, lpTimestamp, 20, buf);
+//    
+//    return true;
+//}
 
-    if (_wgetcwd(buf, 260) == NULL)
+// 获取配置文件路径
+bool GetConfigFilePath(LPWSTR lpCommandLineConfig, LPWSTR configFilePath, size_t bufferSize) {
+    // 获取当前工作目录
+    if (_wgetcwd(configFilePath, bufferSize) == NULL) {
         return false;
-    wcscat(buf, L"\\");
+    }
+    wcscat(configFilePath, L"\\");
 
+    // 处理命令行传入的配置文件路径
     if (lpCommandLineConfig) {
         if ((wcschr(lpCommandLineConfig, L':') - lpCommandLineConfig) == 1) {
-            memset(buf, 0, sizeof(WCHAR) * 260);
-            wsprintfW(buf, lpCommandLineConfig);
+            // 如果是绝对路径，直接使用
+            wcscpy_s(configFilePath, bufferSize, lpCommandLineConfig);
         }
         else {
-            wcscat(buf, lpCommandLineConfig);
+            // 如果是相对路径，拼接到当前工作目录
+            wcscat_s(configFilePath, bufferSize, lpCommandLineConfig);
         }
     }
     else {
-        wcscat(buf, L"hook.ini");
+        // 默认配置文件
+        wcscat_s(configFilePath, bufferSize, L"hook.ini");
     }
 
-    year = GetPrivateProfileIntW(L"Time", L"Year", -1, buf);
-    month = GetPrivateProfileIntW(L"Time", L"Month", -1, buf);
-    day = GetPrivateProfileIntW(L"Time", L"Day", -1, buf);
-    hour = GetPrivateProfileIntW(L"Time", L"Hour", -1, buf);
-    minute = GetPrivateProfileIntW(L"Time", L"Minute", -1, buf);
-    second = GetPrivateProfileIntW(L"Time", L"Second", -1, buf);
+    return true;
+}
 
-    if (lpCommandLineTimestamp)
-        wsprintfW(lpTimestamp, lpCommandLineTimestamp);
-    else
-        GetPrivateProfileStringW(L"Timestamp", L"Timestamp", NULL, lpTimestamp, 20, buf);
-    
+// 解析配置文件
+bool ParseConfig(LPWSTR lpCommandLineConfig, LPWSTR lpCommandLineTimestamp, LPWSTR lpCommandLineServerUrl) {
+    wchar_t configFilePath[MAX_PATH];
+    if (!GetConfigFilePath(lpCommandLineConfig, configFilePath, MAX_PATH)) {
+        return false;
+    }
+
+    // 读取时间配置
+    year = GetPrivateProfileIntW(L"Time", L"Year", -1, configFilePath);
+    month = GetPrivateProfileIntW(L"Time", L"Month", -1, configFilePath);
+    day = GetPrivateProfileIntW(L"Time", L"Day", -1, configFilePath);
+    hour = GetPrivateProfileIntW(L"Time", L"Hour", -1, configFilePath);
+    minute = GetPrivateProfileIntW(L"Time", L"Minute", -1, configFilePath);
+    second = GetPrivateProfileIntW(L"Time", L"Second", -1, configFilePath);
+
+    // 读取时间戳格式
+    if (lpCommandLineTimestamp) {
+        wcscpy_s(lpTimestamp, 20, lpCommandLineTimestamp);
+    }
+    else {
+        GetPrivateProfileStringW(L"Timestamp", L"Timestamp", L"", lpTimestamp, 20, configFilePath);
+    }
+
+    // 读取服务器地址
+    if (lpCommandLineServerUrl) {
+        wcscpy_s(swzServerUrl, lpCommandLineServerUrl);
+    }
+    else {
+        GetPrivateProfileStringW(L"Server", L"server_url", L"", swzServerUrl, 260, configFilePath);
+    }
+
     return true;
 }
 BOOL WINAPI DllMain(
@@ -195,17 +257,20 @@ BOOL WINAPI DllMain(
         int nArgs = 0;
         szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
 
-        int iconfig = -1, its = -1;
+        int iconfig = -1, its = -1, iurl = -1;
 
         for (int i = 0; i <= nArgs - 2; i++) {
             if (!wcscmp(szArglist[i], L"-config"))
                 iconfig = i + 1;
             if (!wcscmp(szArglist[i], L"-ts"))
                 its = i + 1;
+            if (!wcscmp(szArglist[i], L"-server"))
+                iurl = i + 1;
         }
 
-        if (!ParseConfig(iconfig >= 0 ? szArglist[iconfig] : NULL, its >= 0 ? szArglist[its] : NULL))
+        if (!ParseConfig(iconfig >= 0 ? szArglist[iconfig] : NULL, its >= 0 ? szArglist[its] : NULL, iurl >= 0 ? szArglist[iurl] : NULL)) {
             MessageBoxW(NULL, L"配置初始化失败，请检查hook.ini和命令行参数！", L"初始化失败", MB_ICONERROR);
+        }
         
         LocalFree(szArglist);
 
@@ -213,6 +278,7 @@ BOOL WINAPI DllMain(
             MessageBoxW(NULL, L"出现错误，无法Hook指定的函数\r\n请关闭程序重试！", L"Hook失败", MB_ICONERROR);
         
         MessageBoxW(NULL, lpTimestamp, L"自定义时间戳为", MB_OK);
+        MessageBoxW(NULL, swzServerUrl, L"时间戳服务器为", MB_OK);
     }
     return 1;
 }
