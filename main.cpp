@@ -4,7 +4,10 @@
 #include <Windows.h>
 #include <wchar.h>
 #include <detours.h>
+#include <shlwapi.h>
 #include "mssign32.h"
+
+#pragma comment(lib, "shlwapi.lib")
 
 HMODULE hModCrypt32 = NULL, hModMssign32 = NULL, hModKernel32 = NULL;
 using fntCertVerifyTimeValidity = decltype(CertVerifyTimeValidity);
@@ -187,12 +190,6 @@ bool HookFunctions()
 
 // 获取配置文件路径
 bool GetConfigFilePath(LPWSTR lpCommandLineConfig, LPWSTR configFilePath, size_t bufferSize) {
-    // 获取当前工作目录
-    if (_wgetcwd(configFilePath, bufferSize) == NULL) {
-        return false;
-    }
-    wcscat(configFilePath, L"\\");
-
     // 处理命令行传入的配置文件路径
     if (lpCommandLineConfig) {
         if ((wcschr(lpCommandLineConfig, L':') - lpCommandLineConfig) == 1) {
@@ -201,14 +198,23 @@ bool GetConfigFilePath(LPWSTR lpCommandLineConfig, LPWSTR configFilePath, size_t
         }
         else {
             // 如果是相对路径，拼接到当前工作目录
+            // 获取当前工作目录
+            if (_wgetcwd(configFilePath, bufferSize) == NULL) {
+                return false;
+            }
+            wcscat(configFilePath, L"\\");
             wcscat_s(configFilePath, bufferSize, lpCommandLineConfig);
         }
     }
     else {
+        if (0 == ::GetModuleFileNameW(NULL, configFilePath, bufferSize)) {
+            return false;
+        }
+        PathRemoveFileSpecW(configFilePath);
         // 默认配置文件
-        wcscat_s(configFilePath, bufferSize, L"hook.ini");
+        wcscat_s(configFilePath, bufferSize, L"\\hook.ini");
     }
-
+    // MessageBoxW(NULL, configFilePath, L"CWD", MB_OK);
     return true;
 }
 
