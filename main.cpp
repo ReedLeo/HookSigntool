@@ -282,9 +282,10 @@ BOOL WINAPI DllMain(
 
         if (!HookFunctions())
             MessageBoxW(NULL, L"出现错误，无法Hook指定的函数\r\n请关闭程序重试！", L"Hook失败", MB_ICONERROR);
-        
+#ifdef DEBUG       
         MessageBoxW(NULL, lpTimestamp, L"自定义时间戳为", MB_OK);
         MessageBoxW(NULL, swzServerUrl, L"时间戳服务器为", MB_OK);
+#endif
     }
     return 1;
 }
